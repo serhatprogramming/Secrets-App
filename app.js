@@ -88,6 +88,8 @@ app.post('/register', function(req, res) {
   });
 });
 
+console.log('test');
+
 app.post('/login', function(req, res) {
   const username = req.body.username;
   const password = req.body.password;
