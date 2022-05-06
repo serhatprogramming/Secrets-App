@@ -12,7 +12,11 @@ const mongoose = require('mongoose');
 //const encrypt = require('mongoose-encryption');
 
 // md5 is used to hash the fields to encrypt
-const md5 = require('md5');
+// const md5 = require('md5');
+
+// bcyrpt is used to salt the hashes
+const bcrypt = require('bcrypt');
+const saltRounds = 10; //10 rounds of salting
 
 const app = express();
 
@@ -77,19 +81,24 @@ app.get('/register', function(req, res) {
 
 
 app.post('/register', function(req, res) {
-  // Step 5 create a document object from the model
-  const newUser = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-    // md5 method is used to turn the password into a hash
-  });
-  // Step 6 save the document to DB
-  newUser.save(function(err) {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render('secrets');
-    }
+  //bcrypt is used to hash the password acquired from the user
+  //through the form. and salted the number of rounds than create
+  //the document and save it to DB
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    // Step 5 create a document object from the model
+    const newUser = new User({
+      email: req.body.username,
+      password: hash //password is stored as the created hash
+      // md5 method is used to turn the password into a hash
+    });
+    // Step 6 save the document to DB
+    newUser.save(function(err) {
+      if (err) {
+        console.log(err);
+      } else {
+        res.render('secrets');
+      }
+    });
   });
 });
 
@@ -97,7 +106,7 @@ console.log('test');
 
 app.post('/login', function(req, res) {
   const username = req.body.username;
-  const password = md5(req.body.password);
+  const password = req.body.password;
   User.findOne({
     email: username
   }, function(err, foundUser) {
@@ -105,11 +114,20 @@ app.post('/login', function(req, res) {
       console.log(err);
     } else {
       if (foundUser) {
-        if (foundUser.password === password) {
-          res.render('secrets');
-        } else {
-          res.send('wrong password, try again');
-        }
+        bcrypt.compare(password, foundUser.password, function(err, result) {
+          if (result === true) {
+            res.render('secrets');
+          } else {
+            res.send('wrong password, try again');
+          }
+        });
+        // no longer use the password comparison when using
+        //bcrypt compare method
+        // if (foundUser.password === password) {
+        //   res.render('secrets');
+        // } else {
+        //   res.send('wrong password, try again');
+        // }
       } else {
         res.send('no such username, try again');
       }
